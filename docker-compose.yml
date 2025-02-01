@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  django_app:
+    build: .
+    container_name: django_app
+    command: bash -c "python3 manage.py migrate && python3 manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+    environment:
+      - USE_REDIS=True
+
+  redis:
+    image: redis:latest
+    container_name: redis_cache
+    restart: always
+    ports:
+      - "6379:6379"
+
+  celery_worker:
+    build: .
+    container_name: celery_worker
+    command: celery -A videoservice worker --loglevel=info
+    depends_on:
+      - redis
+      - django_app
+
+  celery_beat:
+    build: .
+    container_name: celery_beat
+    command: celery -A videoservice beat --loglevel=info
+    depends_on:
+      - redis
+      - django_app
